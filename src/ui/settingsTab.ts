@@ -1,9 +1,12 @@
 import { PluginSettingTab, Setting, type App } from 'obsidian';
 import type MemoryCardsPlugin from '../main';
 import { DEFAULT_SETTINGS } from '../types';
+import { AIConfigPanel } from './aiConfigPanel';
 
 /** Settings (SPEC §9). Everything has a working default; nothing blocks first use. */
 export class MemoryCardsSettingTab extends PluginSettingTab {
+  private aiConfigPanel?: AIConfigPanel;
+
   constructor(
     app: App,
     private readonly plugin: MemoryCardsPlugin
@@ -15,6 +18,9 @@ export class MemoryCardsSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     const settings = this.plugin.store.settings;
+
+    // ─── Section 1: Core Settings ───
+    containerEl.createEl('h2', { text: '核心设置' });
 
     new Setting(containerEl)
       .setName('卡片文件夹')
@@ -126,6 +132,14 @@ export class MemoryCardsSettingTab extends PluginSettingTab {
           this.plugin.store.updateSettings({ keepReviewLog: value });
         })
       );
+
+    // ─── Section 2: AI Config ───
+    containerEl.createEl('h2', { text: 'AI 自动制卡' });
+    const aiConfigContainer = containerEl.createDiv({ cls: 'memory-cards-ai-config' });
+    
+    this.aiConfigPanel = new AIConfigPanel(this.app, this.plugin);
+    this.aiConfigPanel.containerEl = aiConfigContainer;
+    this.aiConfigPanel.display();
   }
 }
 

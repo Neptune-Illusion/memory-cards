@@ -170,4 +170,78 @@ describe('CSS static contract — Mobile safety', () => {
   it('form inputs have min-height: 40px for touch targets', () => {
     expect(css).toContain('min-height: 40px');
   });
+
+  it('mc-field label has line-height ≥ 1.4 to prevent text clipping', () => {
+    const labelBlock = css.slice(
+      css.indexOf('.memory-cards-modal .mc-field label {'),
+      css.indexOf('}', css.indexOf('.memory-cards-modal .mc-field label {'))
+    );
+    const lhMatch = labelBlock.match(/line-height:\s*([\d.]+)/);
+    expect(lhMatch).not.toBeNull();
+    expect(parseFloat(lhMatch![1])).toBeGreaterThanOrEqual(1.4);
+  });
+
+  it('mc-field label has padding ≥ 3px vertical to prevent clipping', () => {
+    const labelBlock = css.slice(
+      css.indexOf('.memory-cards-modal .mc-field label {'),
+      css.indexOf('}', css.indexOf('.memory-cards-modal .mc-field label {'))
+    );
+    const padMatch = labelBlock.match(/padding:\s*(\d+)px\s+0/);
+    expect(padMatch).not.toBeNull();
+    expect(parseInt(padMatch![1], 10)).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe('CSS contract — DOM structure for QuickAdd label clipping', () => {
+  it('mc-field uses flex-column so label is separate from input', () => {
+    const fieldBlock = css.slice(
+      css.indexOf('.memory-cards-modal .mc-field {'),
+      css.indexOf('}', css.indexOf('.memory-cards-modal .mc-field {'))
+    );
+    expect(fieldBlock).toContain('display: flex');
+    expect(fieldBlock).toContain('flex-direction: column');
+  });
+
+  it('label has display:block and overflow:visible to prevent clipping', () => {
+    const labelBlock = css.slice(
+      css.indexOf('.memory-cards-modal .mc-field label {'),
+      css.indexOf('}', css.indexOf('.memory-cards-modal .mc-field label {'))
+    );
+    expect(labelBlock).toContain('display: block');
+    expect(labelBlock).toContain('overflow: visible');
+  });
+});
+
+describe('CSS contract — SettingsTab AIConfig integration', () => {
+  it('settingsTab imports AIConfigPanel', () => {
+    const src = require('fs').readFileSync(
+      require('path').resolve(__dirname, '../src/ui/settingsTab.ts'),
+      'utf-8'
+    );
+    expect(src).toContain('AIConfigPanel');
+    expect(src).toContain('aiConfigPanel');
+    expect(src).toContain('aiConfigPanel.containerEl');
+    expect(src).toContain('aiConfigPanel.display()');
+  });
+
+  it('aiConfigPanel has provider dropdown with 3 options', () => {
+    const src = require('fs').readFileSync(
+      require('path').resolve(__dirname, '../src/ui/aiConfigPanel.ts'),
+      'utf-8'
+    );
+    expect(src).toContain('anthropic');
+    expect(src).toContain('openai');
+    expect(src).toContain('gemini');
+    expect(src).toContain('Provider');
+    expect(src).toContain('addDropdown');
+  });
+
+  it('aiConfigPanel saves provider to store via plugin', () => {
+    const src = require('fs').readFileSync(
+      require('path').resolve(__dirname, '../src/ui/aiConfigPanel.ts'),
+      'utf-8'
+    );
+    expect(src).toContain('saveAIConfig');
+    expect(src).toContain('this.plugin.saveAIConfig');
+  });
 });
