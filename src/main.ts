@@ -11,13 +11,13 @@ import { ReviewModal } from './ui/reviewModal';
 import { MemoryCardsSettingTab } from './ui/settingsTab';
 import { StatsModal } from './ui/statsModal';
 import type { Card } from './types';
-import { DEFAULT_AI_CONFIG } from './ui/aiConfigPanel';
+import { DEFAULT_AI_CONFIG, DENSITY_CARDS_PER_CHUNK } from './ui/aiConfigPanel';
 import { PDFPickerModal } from './ui/pdfPickerModal';
 import { CardPreviewModal } from './ui/cardPreviewModal';
 import { PDFExtractor } from './pdf/pdfExtractor';
-import { ClaudeProvider } from './ai/claudeProvider';
-import { buildCardGenerationPrompt, parseGeneratedCards } from './cardGeneration/cardGenerator';
-import { deduplicateCards } from './cardGeneration/cardDeduplicator';
+import { createProvider } from './ai/providerFactory';
+import { splitIntoChunks, buildChunkPrompt, parseGeneratedCards } from './cardGeneration/cardGenerator';
+import { deduplicateCards, applyMaxCards } from './cardGeneration/cardDeduplicator';
 import { renderCardMarkdown } from './parser';
 
 export default class MemoryCardsPlugin extends Plugin {
@@ -30,6 +30,7 @@ export default class MemoryCardsPlugin extends Plugin {
       saveData: (data) => this.saveData(data),
     });
     await this.store.load();
+    this.store.normalizeAIConfig();
 
     this.index = new CardIndex(this.app.vault, () => this.store.settings);
 
@@ -253,41 +254,56 @@ export default class MemoryCardsPlugin extends Plugin {
       return;
     }
 
-    // Step 3: Generate cards via AI
-    new Notice('正在调用 AI 生成卡片...');
-    const provider = new ClaudeProvider({
-      provider: 'claude',
+    // Step 3: Chunk text
+    const chunks = splitIntoChunks(text);
+    new Notice(`文本已分为 ${chunks.length} 个片段，开始生成卡片...`);
+
+    // Step 4: Create provider
+    const provider = createProvider({
+      provider: config.provider,
       apiKey: config.apiKey,
       model: config.model,
-      endpoint: config.endpoint,
+      baseUrl: config.baseUrl,
       temperature: config.temperature,
       maxTokens: config.maxTokens,
     });
 
-    let response: string;
-    try {
-      const prompt = buildCardGenerationPrompt(text, this.store.settings);
-      response = await provider.generate(prompt);
-    } catch (err: unknown) {
-      new Notice(`AI 生成失败：${err instanceof Error ? err.message : String(err)}`);
+    // Step 5: Generate cards per chunk with progress
+    const allGenerated: import('./cardGeneration/cardDeduplicator').GeneratedCard[] = [];
+    const errors: string[] = [];
+    const cardsPerChunk = DENSITY_CARDS_PER_CHUNK[config.generationDensity] ?? 5;
+
+    for (let i = 0; i < chunks.length; i++) {
+      new Notice(`生成片段 ${i + 1}/${chunks.length}...`);
+      try {
+        const prompt = buildChunkPrompt(chunks[i], i, chunks.length, this.store.settings, cardsPerChunk);
+        const response = await provider.generate(prompt);
+        const cards = parseGeneratedCards(response);
+        allGenerated.push(...cards);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        errors.push(`片段 ${i + 1}: ${msg}`);
+        // Continue with other chunks — don't let one failure kill the whole batch
+      }
+    }
+
+    if (allGenerated.length === 0) {
+      const errMsg = errors.length > 0 ? `\n失败摘要：${errors.join('; ')}` : '';
+      new Notice(`AI 未返回有效的卡片。${errMsg}`);
       return;
     }
 
-    // Step 4: Parse
-    const generated = parseGeneratedCards(response);
-    if (generated.length === 0) {
-      new Notice('AI 未返回有效的卡片。请检查输入文本或调整 prompt。');
-      return;
-    }
+    // Step 6: Cross-chunk deduplicate
+    const deduped = deduplicateCards(allGenerated, this.index.filteredCards());
 
-    // Step 5: Deduplicate
-    const deduped = deduplicateCards(generated, this.index.filteredCards());
+    // Step 7: Hard truncation to maxCards
+    const truncated = applyMaxCards(deduped, config.maxCards);
 
-    // Step 6: Preview + Edit + Import
-    const approved = await new CardPreviewModal(this.app, deduped, this).open();
+    // Step 8: Preview + Edit + Import
+    const approved = await new CardPreviewModal(this.app, truncated, this).open();
     if (approved.length === 0) return;
 
-    // Step 7: Write cards to vault
+    // Step 8: Write cards to vault
     const folder = this.store.settings.cardFolder.replace(/^\/+|\/+$/g, '');
     if (folder.length > 0 && !this.app.vault.getAbstractFileByPath(folder)) {
       await this.app.vault.createFolder(folder);
@@ -309,17 +325,20 @@ export default class MemoryCardsPlugin extends Plugin {
         .trim()
         .slice(0, 40) || '记忆卡';
       let path = folder.length > 0 ? `${folder}/${base}.md` : `${base}.md`;
-      // Avoid collision
       let attempt = 0;
       while (this.app.vault.getAbstractFileByPath(path)) {
         attempt++;
         path = folder.length > 0 ? `${folder}/${base}-${attempt}.md` : `${base}-${attempt}.md`;
       }
-      const file = await this.app.vault.create(path, body);
-      await this.index.indexFile(file);
+      const f = await this.app.vault.create(path, body);
+      await this.index.indexFile(f);
       created++;
     }
 
-    new Notice(`成功导入 ${created} 张卡片。`);
+    let summary = `成功导入 ${created} 张卡片。`;
+    if (errors.length > 0) {
+      summary += `\n${errors.length} 个片段失败：${errors.join('; ')}`;
+    }
+    new Notice(summary);
   }
 }

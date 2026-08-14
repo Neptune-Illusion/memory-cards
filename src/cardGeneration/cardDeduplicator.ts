@@ -4,12 +4,9 @@ export interface GeneratedCard {
   question: string;
   answer: string;
   note?: string;
+  source?: string;
 }
 
-/**
- * Simple string similarity (character overlap ratio).
- * Good enough for dedup — not a full Jaro-Winkler.
- */
 function stringSimilarity(a: string, b: string): number {
   const normalize = (s: string) => s.toLowerCase().replace(/[^\w\u4e00-\u9fff]/g, '');
   const na = normalize(a);
@@ -20,19 +17,15 @@ function stringSimilarity(a: string, b: string): number {
   const longer = na.length < nb.length ? nb : na;
   let matches = 0;
   for (const c of shorter) {
-    const idx = longer.indexOf(c);
-    if (idx !== -1) {
-      matches++;
-      // crude removal to avoid double-counting
-      // (not perfect but sufficient for dedup thresholds)
-    }
+    if (longer.indexOf(c) !== -1) matches++;
   }
   return matches / longer.length;
 }
 
 /**
- * Deduplicate generated cards against each other and existing cards.
- * Uses normalized question similarity with a threshold.
+ * Deduplicate generated cards:
+ * 1. Within generated set: exact normalized question+answer pair
+ * 2. Against existing cards: similarity threshold on question
  */
 export function deduplicateCards(
   generated: GeneratedCard[],
@@ -40,20 +33,31 @@ export function deduplicateCards(
   threshold = 0.7
 ): GeneratedCard[] {
   const result: GeneratedCard[] = [];
-  const seen = new Set<string>();
+  const seenPairs = new Set<string>();
 
   for (const card of generated) {
-    const norm = card.question.toLowerCase().replace(/[^\w\u4e00-\u9fff]/g, '');
-    if (seen.has(norm)) continue;
+    const normQ = card.question.toLowerCase().replace(/[^\w\u4e00-\u9fff]/g, '');
+    const normA = card.answer.toLowerCase().replace(/[^\w\u4e00-\u9fff]/g, '');
+    const pairKey = normQ + '|||' + normA;
+
+    if (seenPairs.has(pairKey)) continue;
 
     const isDuplicate = existing.some(
       (e) => stringSimilarity(card.question, e.question) >= threshold
     );
-    if (!isDuplicate) {
-      seen.add(norm);
-      result.push(card);
-    }
+    if (isDuplicate) continue;
+
+    seenPairs.add(pairKey);
+    result.push(card);
   }
 
   return result;
+}
+
+/**
+ * Apply a hard card-count limit. Call AFTER deduplication so the user
+ * sees the highest-quality cards. Extracted as a named helper for testability.
+ */
+export function applyMaxCards(cards: GeneratedCard[], maxCards: number): GeneratedCard[] {
+  return cards.slice(0, Math.max(0, maxCards));
 }

@@ -1,5 +1,43 @@
 # Obsidian 闪卡插件 — 变更日志
 
+## v0.3.0 补丁 — 拆卡密度、硬上限与旧 endpoint 迁移（2026-08-15）
+
+### 🔧 修复
+- **generationDensity**: 独立配置项（低/标准/高），不再借用 newPerDay
+- **maxCards**: 总卡数硬上限（1-500，默认100），合并去重后截断
+- **旧配置迁移**: provider 'claude' → 'anthropic'，endpoint → baseUrl（保留代理配置）
+- **配置归一化**: 空/非法值自动修正，maxCards 边界裁剪
+- **设置 UI**: 新增密度下拉 + 最大卡片数输入
+
+### ✅ 测试
+- 新增 15 项行为测试: 配置迁移、密度值、截断、归一化
+- 197 tests pass, build clean
+
+---
+
+## v0.3.0 — 多 AI Provider + PDF 原子知识点拆卡（2026-08-15）
+
+### 🚀 新增
+- **多 AI Provider**: 支持 Anthropic (Claude)、OpenAI-compatible（OpenAI/DeepSeek/OpenRouter/本地）、Google Gemini
+- **Provider 统一接口**: generate/validate/timeout/cancel/retry 一致，密钥不进日志
+- **PDF 原子知识点拆卡**: 分页/段落感知分块 + 重叠窗口，每块提取多个原子知识点
+- **跨块去重**: 按规范化问题+答案对去重，避免跨块重复
+- **结构化输出校验**: 数组和字段校验，单块失败可重试/跳过，最终失败摘要
+- **配置 UI**: Provider 下拉选择、Base URL、Model、API Key，per-provider 合理默认值
+- **进度通知**: 每个片段生成进度、失败摘要、部分成功处理
+- **Token 预算**: 每块 3000 字符 + 500 重叠，避免大 PDF OOM
+
+### ✅ 测试
+- 新增 15 项行为测试: 分块逻辑、跨块去重、多 provider 请求格式、错误降级、多卡生成
+- 182 tests pass, build clean
+
+### 📦 版本
+- manifest.json / package.json / versions.json → 0.3.0
+- 新增: src/ai/openaiProvider.ts, src/ai/geminiProvider.ts, src/ai/providerFactory.ts
+- 重命名: claudeProvider.ts → anthropicProvider.ts
+
+---
+
 ## v0.2.0 — PDF AI 自动制卡（Phase 1 MVP）（2026-08-15）
 
 ### 🚀 新增

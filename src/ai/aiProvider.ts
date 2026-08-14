@@ -1,23 +1,25 @@
-/** AI provider abstraction — Phase 1 MVP. */
+/** AI provider abstraction — multi-provider support. */
+
+export type ProviderType = 'anthropic' | 'openai' | 'gemini';
 
 export interface AIProviderConfig {
-  provider: 'claude';
+  provider: ProviderType;
   apiKey: string;
   model: string;
-  endpoint?: string;
+  baseUrl?: string;
   temperature?: number;
   maxTokens?: number;
-  /** Request timeout in ms (default 60s). */
   timeoutMs?: number;
-  /** Max retries on transient failure (default 2). */
   maxRetries?: number;
 }
 
 export interface AIProvider {
-  /** Check if config is valid and the API is reachable. */
   validate(): Promise<boolean>;
-  /** Generate text from a prompt. Throws on failure. */
   generate(prompt: string, opts?: { signal?: AbortSignal }): Promise<string>;
 }
 
-export type CardCountTarget = number;
+export const PROVIDER_DEFAULTS: Record<ProviderType, { baseUrl: string; model: string }> = {
+  anthropic: { baseUrl: 'https://api.anthropic.com/v1/messages', model: 'claude-sonnet-4-20250514' },
+  openai: { baseUrl: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o' },
+  gemini: { baseUrl: 'https://generativelanguage.googleapis.com/v1beta/', model: 'gemini-2.0-flash' },
+};

@@ -1,25 +1,48 @@
 import type { MemoryCardsSettings } from '../types';
 import type { GeneratedCard } from './cardDeduplicator';
 
+/** Maximum characters per chunk to stay within token limits. */
+const CHUNK_SIZE = 3000;
+/** Overlap between chunks to avoid splitting mid-concept. */
+const CHUNK_OVERLAP = 500;
+
 /**
- * Build a prompt for the AI to generate flashcards from extracted text.
- * Truncates input to stay within token limits.
+ * Split text into overlapping chunks for per-chunk card generation.
  */
-export function buildCardGenerationPrompt(
-  text: string,
-  settings: MemoryCardsSettings
+export function splitIntoChunks(text: string, chunkSize = CHUNK_SIZE, overlap = CHUNK_OVERLAP): string[] {
+  if (text.length <= chunkSize) return [text];
+  const chunks: string[] = [];
+  let start = 0;
+  while (start < text.length) {
+    const end = Math.min(start + chunkSize, text.length);
+    chunks.push(text.slice(start, end));
+    if (end >= text.length) break;
+    start = end - overlap;
+  }
+  return chunks;
+}
+
+/**
+ * Build a prompt for one chunk. Asks for atomic knowledge points —
+ * each knowledge point becomes exactly one card.
+ */
+export function buildChunkPrompt(
+  chunkText: string,
+  chunkIndex: number,
+  totalChunks: number,
+  settings: MemoryCardsSettings,
+  cardsPerChunk: number
 ): string {
-  const maxLen = 4000;
-  const truncated = text.length > maxLen;
-  const body = text.slice(0, maxLen) + (truncated ? '\n\n... [文本已截断]' : '');
+  return `你是专业学习卡片设计师。从以下文本片段中提取原子知识点，每个知识点生成恰好一张记忆卡片。
 
-  return `你是专业学习卡片设计师。基于以下文本生成高质量记忆卡片。
-
-【规则】
-1. 每张卡片包含：问题（简洁具体）、答案（完整自含）、注解（可选，记忆技巧）
-2. 优先生成 ${settings.newPerDay} 张高质量卡片
-3. 避免是/否问题
-4. 保留原文中的 LaTeX 公式和 Markdown 格式
+【要求】
+- 每个知识点 = 一张卡片（question/answer/note）
+- 问题简洁具体，避免是/否问题
+- 答案完整自含，无需参考原文
+- 注解提供记忆技巧（可选）
+- 保留 LaTeX 公式和 Markdown 格式
+- 目标生成 ${cardsPerChunk} 张卡片（根据内容密度可少不可多）
+- 只输出 JSON，不要其他文字
 
 【格式（严格 JSON）】
 \`\`\`json
@@ -28,23 +51,22 @@ export function buildCardGenerationPrompt(
     {
       "question": "问题？",
       "answer": "答案",
-      "note": "记忆技巧"
+      "note": "记忆技巧",
+      "source": "chunk_${chunkIndex + 1}/${totalChunks}"
     }
   ]
 }
 \`\`\`
 
-【待生成文本】
-${body}`;
+【文本片段 ${chunkIndex + 1}/${totalChunks}】
+${chunkText}`;
 }
 
 /**
  * Parse JSON response from AI model into GeneratedCard array.
- * Handles common formatting issues (extra text around JSON, markdown fences).
  */
 export function parseGeneratedCards(response: string): GeneratedCard[] {
   try {
-    // Try to extract JSON block from response
     const jsonMatch = response.match(/\{[\s\S]*"cards"[\s\S]*\}/);
     if (!jsonMatch) return [];
     const data = JSON.parse(jsonMatch[0]);
@@ -61,6 +83,7 @@ export function parseGeneratedCards(response: string): GeneratedCard[] {
         question: c.question.trim(),
         answer: c.answer.trim(),
         note: typeof c.note === 'string' ? c.note.trim() : undefined,
+        source: typeof c.source === 'string' ? c.source : undefined,
       }));
   } catch {
     return [];

@@ -1,15 +1,17 @@
 import type { AIProvider, AIProviderConfig } from './aiProvider';
 
-/** Real Claude API provider with timeout, cancellation, and retry. */
-export class ClaudeProvider implements AIProvider {
-  private readonly endpoint: string;
+/** OpenAI-compatible provider (covers OpenAI, DeepSeek, OpenRouter, local). */
+export class OpenAIProvider implements AIProvider {
   private readonly timeoutMs: number;
   private readonly maxRetries: number;
 
   constructor(private readonly config: AIProviderConfig) {
-    this.endpoint = config.endpoint || 'https://api.anthropic.com/v1/messages';
     this.timeoutMs = config.timeoutMs ?? 60_000;
     this.maxRetries = config.maxRetries ?? 2;
+  }
+
+  private get endpoint(): string {
+    return this.config.baseUrl || 'https://api.openai.com/v1/chat/completions';
   }
 
   async validate(): Promise<boolean> {
@@ -20,9 +22,8 @@ export class ClaudeProvider implements AIProvider {
       const res = await fetch(this.endpoint, {
         method: 'POST',
         headers: {
-          'x-api-key': this.config.apiKey,
-          'content-type': 'application/json',
-          'anthropic-version': '2023-06-01',
+          Authorization: `Bearer ${this.config.apiKey}`,
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           model: this.config.model,
@@ -32,7 +33,6 @@ export class ClaudeProvider implements AIProvider {
         signal: ctrl.signal,
       });
       clearTimeout(timer);
-      // 200 = success, 400 = bad request (but key works), 401 = bad key
       return res.status !== 401;
     } catch {
       return false;
@@ -45,15 +45,13 @@ export class ClaudeProvider implements AIProvider {
       try {
         const ctrl = new AbortController();
         const timer = setTimeout(() => ctrl.abort(), this.timeoutMs);
-        // Allow external abort to also cancel
         opts?.signal?.addEventListener('abort', () => ctrl.abort());
 
         const res = await fetch(this.endpoint, {
           method: 'POST',
           headers: {
-            'x-api-key': this.config.apiKey,
-            'content-type': 'application/json',
-            'anthropic-version': '2023-06-01',
+            Authorization: `Bearer ${this.config.apiKey}`,
+            'Content-Type': 'application/json',
           },
           body: JSON.stringify({
             model: this.config.model,
@@ -67,24 +65,22 @@ export class ClaudeProvider implements AIProvider {
 
         if (!res.ok) {
           const body = await res.text().catch(() => '');
-          throw new Error(`Claude API ${res.status}: ${body.slice(0, 200)}`);
+          throw new Error(`OpenAI API ${res.status}: ${body.slice(0, 200)}`);
         }
 
-        // Guard against absurdly large responses (e.g. model loop returning megabytes).
         const text = await res.text();
         if (text.length > 512_000) {
-          throw new Error('AI response too large (over 500 KB), likely a model error.');
+          throw new Error('AI response too large (over 500 KB).');
         }
 
         try {
           const data = JSON.parse(text);
-          return data.content?.[0]?.text ?? '';
+          return data.choices?.[0]?.message?.content ?? '';
         } catch {
           throw new Error('AI returned non-JSON response.');
         }
       } catch (err: unknown) {
         lastError = err;
-        // Don't retry on abort (user cancelled) or 4xx (client error)
         if (err instanceof DOMException && err.name === 'AbortError') {
           throw new Error('AI request was cancelled.');
         }

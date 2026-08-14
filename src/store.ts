@@ -9,7 +9,7 @@ import {
 } from './types';
 import type { ActiveSession } from './session';
 import type { AIConfig } from './ui/aiConfigPanel';
-import { DEFAULT_AI_CONFIG } from './ui/aiConfigPanel';
+import { DEFAULT_AI_CONFIG, normalizeAIConfig } from './ui/aiConfigPanel';
 
 const MAX_LOG_ENTRIES = 5000;
 
@@ -162,8 +162,14 @@ export class Store {
     return this.data.aiConfig ?? { ...DEFAULT_AI_CONFIG };
   }
 
+  normalizeAIConfig(): void {
+    if (this.data.aiConfig) {
+      this.data.aiConfig = normalizeAIConfig(this.data.aiConfig);
+    }
+  }
+
   setAIConfig(config: AIConfig): void {
-    this.data.aiConfig = config;
+    this.data.aiConfig = normalizeAIConfig(config);
     this.scheduleSave();
   }
 
