@@ -205,14 +205,16 @@
 .memory-cards-modal .mc-field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-bottom: 10px;
+  gap: 8px;
+  margin-bottom: 14px;
 }
 
 .memory-cards-modal .mc-field label {
   color: var(--mc-text-muted);
   font-size: var(--font-ui-smaller, 12px);
   font-weight: 600;
+  margin-bottom: 2px;
+  line-height: 1.4;
 }
 
 .memory-cards-modal .mc-field input,
@@ -292,6 +294,28 @@
   padding-top: var(--mc-gap);
 }
 
+
+/* ─── Math / LaTeX (inline + block) ─── */
+.memory-cards-modal .math {
+  overflow-x: auto;
+  max-width: 100%;
+}
+.memory-cards-modal .mathjax-block,
+.memory-cards-modal .math-display {
+  overflow-x: auto;
+  max-width: 100%;
+  padding: 4px 0;
+}
+.memory-cards-modal mjx-container {
+  overflow-x: auto;
+  max-width: 100%;
+}
+.memory-cards-modal mjx-container[display="true"] {
+  display: block;
+  overflow-x: auto;
+  margin: 8px 0;
+  padding: 0 4px;
+}
 /* ═══════════════════════════════════════════════════════════════
    RESPONSIVE BREAKPOINTS
    ═══════════════════════════════════════════════════════════════ */

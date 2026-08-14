@@ -52,6 +52,7 @@ export default class MemoryCardsPlugin extends Plugin {
     });
 
     this.addRibbonIcon('brain-circuit', '开始复习', () => this.startReview());
+    this.addRibbonIcon('plus', '新建记忆卡', () => this.quickAdd());
 
     // Index after the vault is ready so getMarkdownFiles() sees everything.
     this.app.workspace.onLayoutReady(() => {
@@ -166,10 +167,10 @@ export default class MemoryCardsPlugin extends Plugin {
       this.app,
       this.store,
       queue,
-      this,
       initialIndex,
       ids,
-      initialRevealed
+      initialRevealed,
+      () => this.quickAdd()
     ).open();
   }
 

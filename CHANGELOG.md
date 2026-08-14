@@ -1,5 +1,23 @@
 # Obsidian 闪卡插件 — 变更日志
 
+## v0.1.1 — Bugfix: 建卡遮挡 / 移动入口 / LaTeX 渲染（2026-08-14）
+
+### 🔧 修复
+- **桌面建卡遮挡**: 增加 `.mc-field` label 与 input/textarea 间距（gap 4→8px, margin-bottom），消除 label 被输入框边框覆盖
+- **移动端建卡入口**: 新增 ribbon icon (`+` 新建记忆卡)，无需键盘即可打开 QuickAdd；复习空队列摘要页新增"新建卡片"触控按钮（手机 ribbon 折叠时仍可达）
+- **LaTeX 渲染**: 为 math/mjx-container 添加 `overflow-x: auto` + `max-width: 100%`，长公式横向滚动
+- **渲染生命周期加固**: 问题/答案/注解改用每卡独立 `Component` 作为 MarkdownRenderer owner，卡切换与模态关闭时 `unload()`，避免在插件 owner 上累积 postprocessor（MathJax/KaTeX）子组件、防止旧异步结果在卡切换后写回
+
+### ✅ 测试
+- 新增 `tests/bugfix-0.1.1.test.ts`：入口点、MarkdownRenderer 每卡生命周期（非 owner 直传）、卡切换清理、CSS 数学公式契约、label 间距契约、summary 触控入口
+- 145 tests pass, build clean
+- 示例卡新增 `$...$` / `$$...$$` 公式；README 补充公式语法说明
+
+### 📦 版本
+- manifest.json / package.json / versions.json → 0.1.1
+
+---
+
 ## v0.1.0 — Release-Ready（2026-08-14）
 
 ### 🔧 发布准备

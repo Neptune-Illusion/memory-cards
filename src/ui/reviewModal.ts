@@ -1,4 +1,4 @@
-import { MarkdownRenderer, Modal, Notice, Platform, type App, type Component } from 'obsidian';
+import { MarkdownRenderer, Modal, Notice, Platform, type App, Component } from 'obsidian';
 import { checkGradeDistribution, checkTiming, shouldNudgeBeforeReveal } from '../anticheat';
 import { review } from '../scheduler';
 import type { Store } from '../store';
@@ -42,15 +42,22 @@ export class ReviewModal extends Modal {
   private touchStartY = 0;
   private queueIds: string[];
   private listeners: Map<EventTarget, Array<{ event: string; handler: EventListener }>> = new Map();
+  /**
+   * Holds the per-card render Component used as the MarkdownRenderer owner.
+   * Unloaded on every card switch and on modal close so postprocessor
+   * children (incl. MathJax/KaTeX) don't accumulate on the plugin owner
+   * and stale async results can't write back after a card switch.
+   */
+  private cardRender: Component | null = null;
 
   constructor(
     app: App,
     private readonly store: Store,
     private readonly queue: Card[],
-    private readonly owner: Component,
     initialIndex = 0,
     queueIds?: string[],
-    initialRevealed = false
+    initialRevealed = false,
+    private readonly onQuickAdd?: () => void
   ) {
     super(app);
     this.index = initialIndex;
@@ -85,6 +92,7 @@ export class ReviewModal extends Modal {
   }
 
   onClose(): void {
+    this.disposeCardRender();
     this.contentEl.empty();
     // Clean up all event listeners
     this.removeAllListeners();
@@ -147,8 +155,27 @@ export class ReviewModal extends Modal {
     return this.queue[this.index];
   }
 
+  /**
+   * Render Markdown (incl. `$...$` / `$$...$$` LaTeX) into `el` using the
+   * per-card Component so its postprocessors are owned and unloaded with it.
+   * Passing a per-card owner instead of the long-lived plugin avoids
+   * accumulating MathJax/KaTeX child components across card switches.
+   */
+  private renderMarkdown(md: string, el: HTMLElement, sourcePath: string): void {
+    const owner = this.cardRender ?? new Component();
+    void MarkdownRenderer.render(this.app, md, el, sourcePath, owner);
+  }
+
+  private disposeCardRender(): void {
+    if (this.cardRender) {
+      this.cardRender.unload();
+      this.cardRender = null;
+    }
+  }
+
   private render(): void {
     const card = this.current;
+    this.disposeCardRender();
     this.contentEl.empty();
     if (!card) {
       this.renderSummary();
@@ -158,13 +185,17 @@ export class ReviewModal extends Modal {
     this.shownAt = Date.now();
     this.nudged = false;
 
+    // Per-card Component so postprocessors unload on switch (not the plugin owner).
+    this.cardRender = new Component();
+    this.cardRender.load();
+
     const header = this.contentEl.createDiv({ cls: 'mc-header' });
     header.createSpan({ text: `${this.index + 1} / ${this.queue.length}`, cls: 'mc-progress-text' });
     const bar = header.createDiv({ cls: 'mc-progress' });
     bar.createDiv({ cls: 'mc-progress-fill' }).style.width = `${(this.index / this.queue.length) * 100}%`;
 
     const question = this.contentEl.createDiv({ cls: 'mc-question' });
-    void MarkdownRenderer.render(this.app, card.question, question, card.notePath, this.owner);
+    this.renderMarkdown(card.question, question, card.notePath);
 
     const hintText = Platform.isMobile
       ? '💭 先在脑海里回答，然后点按钮揭晓。'
@@ -205,10 +236,10 @@ export class ReviewModal extends Modal {
     this.store.setActiveSession(session);
 
     const answer = this.contentEl.createDiv({ cls: 'mc-answer' });
-    void MarkdownRenderer.render(this.app, card.answer, answer, card.notePath, this.owner);
+    this.renderMarkdown(card.answer, answer, card.notePath);
     if (card.note) {
       const extra = this.contentEl.createDiv({ cls: 'mc-note' });
-      void MarkdownRenderer.render(this.app, card.note, extra, card.notePath, this.owner);
+      this.renderMarkdown(card.note, extra, card.notePath);
     }
 
     this.contentEl.querySelector('.mc-actions')?.remove();
@@ -326,6 +357,12 @@ export class ReviewModal extends Modal {
     }
 
     const actions = wrapper.createDiv({ cls: 'mc-summary-actions' });
+    // Touch-friendly quick-add entry (mobile ribbon may be collapsed / hidden).
+    if (this.onQuickAdd && this.completed === 0) {
+      const add = actions.createEl('button', { text: '新建卡片', cls: 'mod-cta' });
+      add.setAttribute('aria-label', '新建记忆卡');
+      add.addEventListener('click', () => this.onQuickAdd?.());
+    }
     const close = actions.createEl('button', { text: '关闭', cls: 'mod-cta' });
     close.addEventListener('click', () => this.close());
     if (!Platform.isMobile) {

@@ -2,7 +2,7 @@
 
 把笔记变成可主动回忆的卡片，用间隔重复安排复习。实现依据 `design/记忆学习方案-SPEC.md`。
 
-**版本**: v0.1.0 | **状态**: Release-ready | **平台**: Desktop 1.5.0+ / Mobile 1.4.0+
+**版本**: v0.1.1 | **状态**: Release-ready | **平台**: Desktop 1.5.0+ / Mobile 1.4.0+
 
 ## 已实现
 
@@ -46,6 +46,16 @@ tags: [记忆卡, 生物]
 ```
 
 `???` 前是问题，后是答案；`:::` 后是可选注解（评分后展示）。一个笔记内用 `---` 分隔多张卡。分隔符可在设置里改。
+
+问题、答案、注解都按 Obsidian Markdown 渲染，**支持 LaTeX 公式**：
+- 行内公式 `$...$`：`问题：$E = mc^2$ 是什么？`
+- 块级公式 `$$...$$`：
+  ```
+  ??? 答案
+
+  $$\int_0^1 x^2\,dx = \frac{1}{3}$$
+  ```
+长公式在手机上可横向滚动，不会遮挡评分栏。示例见 `卡片/示例-细胞呼吸.md`。
 
 ## 命令
 
@@ -91,7 +101,7 @@ tags: [记忆卡, 生物]
 - ✅ Baseline 风格对齐（语义变量、thin border、restrained shadow/radius）
 - ✅ 移动安全（dvh、safe-area、flex 收缩、overscroll-behavior）
 - ✅ CSS 静态契约测试 22 项通过
-- ✅ 129 个单元测试 100% 通过
+- ✅ 145 个单元测试 100% 通过
 
 ### ⏳ 未在真机 Obsidian 中验证
 
@@ -128,7 +138,7 @@ tags: [记忆卡, 生物]
 
 ```bash
 npm install
-npm test        # 129 个单测：parser / scheduler / anticheat / store / mobile / mobile-lifecycle / css-contract / release-contract
+npm test        # 145 个单测：parser / scheduler / anticheat / store / mobile / mobile-lifecycle / css-contract / release-contract / bugfix-0.1.1
 npm run build   # tsc 类型检查 + esbuild 打包出 main.js
 npm run dev     # watch 模式
 ```
