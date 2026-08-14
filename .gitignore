@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+
+# Build output (release assets: main.js, manifest.json, styles.css are tracked)
+main.js.map
+
+# System / editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Editor and agent directories
+.opencode/
+.codex/
+.claude/
+.cursor/
+.idea/
+.vscode/
+
+# Obsidian runtime
+data.json
+.obsidian/
+
+# Local vault data
+*.local/
+
+# Environment / secrets
+.env
+.env.*
+
+# Logs
+*.log
+npm-debug.log*
