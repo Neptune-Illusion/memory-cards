@@ -8,6 +8,8 @@ import {
   type ReviewLogEntry,
 } from './types';
 import type { ActiveSession } from './session';
+import type { AIConfig } from './ui/aiConfigPanel';
+import { DEFAULT_AI_CONFIG } from './ui/aiConfigPanel';
 
 const MAX_LOG_ENTRIES = 5000;
 
@@ -154,6 +156,15 @@ export class Store {
       this.saveTimer = null;
       this.pendingSave = this.persistence.saveData(this.data);
     }, 300);
+  }
+
+  get aiConfig(): AIConfig {
+    return this.data.aiConfig ?? { ...DEFAULT_AI_CONFIG };
+  }
+
+  setAIConfig(config: AIConfig): void {
+    this.data.aiConfig = config;
+    this.scheduleSave();
   }
 
   /** Flush any pending write. Call on plugin unload or app background. */

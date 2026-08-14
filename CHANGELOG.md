@@ -1,5 +1,28 @@
 # Obsidian 闪卡插件 — 变更日志
 
+## v0.2.0 — PDF AI 自动制卡（Phase 1 MVP）（2026-08-15）
+
+### 🚀 新增
+- **从 PDF 自动生成卡片**: 选择 vault 内 PDF → 提取文本 → AI 生成记忆卡片 → 预览编辑 → 批量导入
+- **Claude API 内置 provider**: 支持配置 API Key、模型、endpoint、temperature、maxTokens
+- **AI 配置面板**: 设置 → AI 自动制卡，密钥不明文日志
+- **PDF 文本提取**: 使用 pdfjs-dist（lazy-load），扫描件/空文本给出明确降级提示
+- **卡片预览/编辑**: 逐卡浏览、编辑答案/注解、选中/反选、全选切换
+- **卡片去重**: 与已有卡片相似度检测（阈值 0.7），避免重复导入
+- **AI 请求容错**: 超时（60s）、取消、重试（默认 2 次）、JSON 解析失败恢复
+- **命令入口**: 命令面板「从 PDF 生成卡片」，桌面与移动可触控
+- **LaTeX/Markdown 保留**: 生成卡片支持行内 $...$ 和块级 $$...$$ 公式
+
+### ✅ 测试
+- 新增 `tests/pdfAutoCard.test.ts`（12 tests）: prompt 构建、JSON 解析、去重逻辑、Claude provider mock
+- 193 tests pass, build clean
+
+### 📦 版本
+- manifest.json / package.json / versions.json → 0.2.0
+- 新增依赖: pdfjs-dist@4.9.155
+
+---
+
 ## v0.1.2 — Bugfix: 移动端会话恢复弹窗按钮无响应（2026-08-14）
 
 ### 🐛 根因

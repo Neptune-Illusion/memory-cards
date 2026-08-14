@@ -66,6 +66,8 @@ export interface MemoryCardsSettings {
   keepReviewLog: boolean;
 }
 
+import type { AIConfig } from './ui/aiConfigPanel';
+
 export const DEFAULT_SETTINGS: MemoryCardsSettings = {
   cardFolder: '卡片',
   newPerDay: 10,
@@ -95,4 +97,5 @@ export interface PluginData {
     revealed: boolean;
     startedAt: string;
   };
+  aiConfig?: AIConfig;
 }
