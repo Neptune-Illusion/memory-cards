@@ -1,5 +1,25 @@
 # Obsidian 闪卡插件 — 变更日志
 
+## v0.1.2 — Bugfix: 移动端会话恢复弹窗按钮无响应（2026-08-14）
+
+### 🐛 根因
+- `ConfirmDialog` 点击处理先 `modal.close()` 再 resolve，移动端 DOM 拆除可能取消 iOS 合成 click → 按钮看似无响应
+- 关闭路径（X / 遮罩 / Escape）不 resolve → `promptResumeSession()` 永久 pending，插件假死
+- 双击 / close+onClose 并发存在双重 resolve 风险
+
+### 🔧 修复
+- 重写 `confirmDialog.ts`：决策状态 `ConfirmDecision` 与 UI 分离，settle-once 守卫
+- 按钮先 settle 再 close；`onClose` 兜底 resolve `dismiss`，Promise 永不挂起
+- `mapConfirmResult` 支持三态（continue/abandon/dismiss）
+- `main.ts`：dismiss 时保留旧会话不静默继续；abandon 清除并新开复习
+- CSS：`.mc-actions button` ≥44px + `touch-action: manipulation`（消除移动端双击缩放延迟）
+
+### ✅ 测试
+- 新增 `tests/session-resume.test.ts`（12 tests）：真实 click 事件分发、resolve-once、dismiss 路径、Store activeSession 变化、restored revealed
+- 157 tests pass, build clean
+
+---
+
 ## v0.1.1 — Bugfix: 建卡遮挡 / 移动入口 / LaTeX 渲染（2026-08-14）
 
 ### 🔧 修复

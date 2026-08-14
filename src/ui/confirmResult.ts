@@ -1,10 +1,16 @@
 /**
  * Map ConfirmDialog result to a typed decision.
+ * 'confirm' → confirmValue, 'cancel' → cancelValue, anything else → dismissValue.
  */
+export type ConfirmResult = 'confirm' | 'cancel' | 'dismiss';
+
 export function mapConfirmResult(
-  result: 'confirm' | 'cancel',
+  result: ConfirmResult,
   confirmValue: string,
-  cancelValue: string
+  cancelValue: string,
+  dismissValue = cancelValue
 ): string {
-  return result === 'confirm' ? confirmValue : cancelValue;
+  if (result === 'confirm') return confirmValue;
+  if (result === 'cancel') return cancelValue;
+  return dismissValue;
 }

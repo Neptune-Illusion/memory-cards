@@ -146,6 +146,17 @@
   font-size: var(--mc-font);
 }
 
+/* Confirm dialog (session resume): ≥44px touch target, instant tap on mobile.
+   touch-action: manipulation disables double-tap-zoom delay so the first tap
+   is registered immediately (fixes "continue/discard button unresponsive"). */
+.memory-cards-modal .mc-actions button {
+  min-height: 44px;
+  padding: 10px 16px;
+  font-size: var(--mc-font);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* ─── Grade buttons ─── */
 .memory-cards-modal .mc-grades {
   display: grid;

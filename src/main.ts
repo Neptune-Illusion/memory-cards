@@ -115,7 +115,12 @@ export default class MemoryCardsPlugin extends Plugin {
         if (resumeQueue.length > 0) {
           const decision = await this.promptResumeSession();
           if (decision === 'abandon') {
+            // Explicit abandon: drop the old session and start a fresh review.
             this.store.setActiveSession(undefined);
+          } else if (decision === 'dismiss') {
+            // Dismissed (X / overlay / Escape): keep the old session so the
+            // next startReview re-prompts; start nothing right now.
+            return;
           } else {
             this.openReview(
               resumeQueue,
@@ -174,14 +179,16 @@ export default class MemoryCardsPlugin extends Plugin {
     ).open();
   }
 
-  private promptResumeSession(): Promise<'continue' | 'abandon'> {
+  private promptResumeSession(): Promise<'continue' | 'abandon' | 'dismiss'> {
     return new ConfirmDialog(
       this.app,
       '继续上次的复习？',
       '选择"继续"从上次中断处恢复，或"放弃"开始新的复习。',
       '继续',
       '放弃'
-    ).then((r) => mapConfirmResult(r, 'continue', 'abandon') as 'continue' | 'abandon');
+    ).then(
+      (r) => mapConfirmResult(r, 'continue', 'abandon', 'dismiss') as 'continue' | 'abandon' | 'dismiss'
+    );
   }
 
   private quickAdd(): void {
