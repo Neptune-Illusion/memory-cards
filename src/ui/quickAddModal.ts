@@ -22,6 +22,8 @@ export class QuickAddModal extends Modal {
 
   onOpen(): void {
     this.modalEl.addClass('memory-cards-modal');
+    // QuickAdd-specific class so desktop padding is scoped without touching review/summary modals
+    this.modalEl.addClass('memory-cards-modal--quickadd');
     if (Platform.isMobile) {
       this.modalEl.addClass('memory-cards-modal--mobile');
     }

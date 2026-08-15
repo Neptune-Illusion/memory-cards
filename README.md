@@ -2,7 +2,7 @@
 
 把笔记变成可主动回忆的卡片，用间隔重复安排复习。实现依据 `design/记忆学习方案-SPEC.md`。
 
-**版本**: v0.3.0 | **状态**: Release-ready | **平台**: Desktop 1.5.0+ / Mobile 1.4.0+
+**版本**: v0.3.2 | **状态**: Release-ready | **平台**: Desktop 1.5.0+ / Mobile 1.4.0+
 
 ## 已实现
 
@@ -138,7 +138,7 @@ tags: [记忆卡, 生物]
 
 ```bash
 npm install
-npm test        # 182 个单测：parser / scheduler / anticheat / store / mobile / mobile-lifecycle / css-contract / release-contract / bugfix-0.1.1 / session-resume
+npm test        # 212 个单测：parser / scheduler / anticheat / store / mobile / mobile-lifecycle / css-contract / release-contract / bugfix-0.1.1 / session-resume
 npm run build   # tsc 类型检查 + esbuild 打包出 main.js
 npm run dev     # watch 模式
 ```

@@ -39,17 +39,47 @@ export const DEFAULT_AI_CONFIG: AIConfig = {
  * - provider 'claude' → 'anthropic'
  * - endpoint → baseUrl
  * - missing density/maxCards → defaults
+ * - Fix legacy mismatches: if model/baseUrl match ANY known provider's defaults,
+ *   treat them as migrable (update to current provider's defaults), not custom values
  */
 export function normalizeAIConfig(raw: Partial<AIConfig>): AIConfig {
   // Migrate before spread so endpoint doesn't get overwritten by defaults
   const migrated = { ...raw } as any;
-  if (migrated.provider === 'claude') migrated.provider = 'anthropic';
+  // Legacy 'claude' (0.2.0) and removed 'gemini' (0.3.1) both migrate to anthropic.
+  // 'claude' keeps custom endpoint/model; 'gemini' is fully reset to anthropic defaults
+  // because the provider no longer exists — its model/baseUrl are unusable.
+  const wasGemini = migrated.provider === 'gemini';
+  if (migrated.provider === 'claude' || migrated.provider === 'gemini') migrated.provider = 'anthropic';
   if (migrated.endpoint && !migrated.baseUrl) {
     migrated.baseUrl = migrated.endpoint;
   }
   const cfg = { ...DEFAULT_AI_CONFIG, ...migrated } as AIConfig;
+
   // Ensure valid provider
   if (!PROVIDER_DEFAULTS[cfg.provider]) cfg.provider = 'anthropic';
+
+  // Removed provider: reset model/baseUrl to anthropic defaults (no usable gemini values remain)
+  if (wasGemini) {
+    cfg.model = DEFAULT_AI_CONFIG.model;
+    cfg.baseUrl = DEFAULT_AI_CONFIG.baseUrl;
+  }
+
+  // Fix legacy mismatches: if model/baseUrl match ANY provider's defaults,
+  // they're migrable defaults, not custom values. Update to current provider's defaults.
+  const allKnownDefaults = Object.values(PROVIDER_DEFAULTS);
+  const modelIsKnownDefault = allKnownDefaults.some(d => d.model === cfg.model);
+  const baseUrlIsKnownDefault = allKnownDefaults.some(d => d.baseUrl === cfg.baseUrl);
+
+  // If model is a known default (from any provider), update to current provider's default
+  if (modelIsKnownDefault && cfg.model !== PROVIDER_DEFAULTS[cfg.provider].model) {
+    cfg.model = PROVIDER_DEFAULTS[cfg.provider].model;
+  }
+
+  // If baseUrl is a known default (from any provider), update to current provider's default
+  if (baseUrlIsKnownDefault && cfg.baseUrl !== PROVIDER_DEFAULTS[cfg.provider].baseUrl) {
+    cfg.baseUrl = PROVIDER_DEFAULTS[cfg.provider].baseUrl;
+  }
+
   // Clamp maxCards
   cfg.maxCards = cfg.maxCards != null ? Math.max(1, Math.min(500, cfg.maxCards)) : DEFAULT_AI_CONFIG.maxCards;
   // Ensure valid density
@@ -62,7 +92,6 @@ export function normalizeAIConfig(raw: Partial<AIConfig>): AIConfig {
 const PROVIDER_LABELS: Record<ProviderType, string> = {
   anthropic: 'Anthropic (Claude)',
   openai: 'OpenAI-compatible',
-  gemini: 'Google Gemini',
 };
 
 const DENSITY_LABELS: Record<GenerationDensity, string> = {
@@ -94,13 +123,22 @@ export class AIConfigPanel extends PluginSettingTab {
           .addOptions(PROVIDER_LABELS)
           .setValue(config.provider)
           .onChange(async (value: string) => {
-            const provider = value as ProviderType;
-            config.provider = provider;
-            const defaults = PROVIDER_DEFAULTS[provider];
-            if (!config.model || config.model === PROVIDER_DEFAULTS[config.provider]?.model) {
-              config.model = defaults.model;
+            const oldProvider = config.provider;
+            const newProvider = value as ProviderType;
+            const newDefaults = PROVIDER_DEFAULTS[newProvider];
+            const oldDefaults = PROVIDER_DEFAULTS[oldProvider];
+
+            // Only update model if it was using the old provider's default
+            if (!config.model || config.model === oldDefaults?.model) {
+              config.model = newDefaults.model;
             }
-            config.baseUrl = defaults.baseUrl;
+
+            // Only update baseUrl if it was using the old provider's default
+            if (!config.baseUrl || config.baseUrl === oldDefaults?.baseUrl) {
+              config.baseUrl = newDefaults.baseUrl;
+            }
+
+            config.provider = newProvider;
             await this.plugin.saveAIConfig(config);
             this.display();
           })

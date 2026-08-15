@@ -115,15 +115,15 @@ describe('SettingsTab — AIConfigPanel integration behavioral test', () => {
     const selects = aiSection!._children.filter((c: any) => c._tag === 'select');
     expect(selects.length).toBeGreaterThanOrEqual(1);
 
-    // The first dropdown should be the Provider dropdown with 3 options
+    // The first dropdown should be the Provider dropdown with 2 options (Gemini removed)
     const providerSelect = selects[0];
     const options = providerSelect._children.filter((c: any) => c._tag === 'option');
-    expect(options.length).toBe(3);
+    expect(options.length).toBe(2);
 
     const optionValues = options.map((o: any) => o.value);
     expect(optionValues).toContain('anthropic');
     expect(optionValues).toContain('openai');
-    expect(optionValues).toContain('gemini');
+    expect(optionValues).not.toContain('gemini');
   });
 
   it('Provider dropdown onChange saves to store via plugin.saveAIConfig', async () => {

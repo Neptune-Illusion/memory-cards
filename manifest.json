@@ -1,7 +1,7 @@
 {
   "id": "memory-cards",
   "name": "Memory Cards",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "minAppVersion": "1.5.0",
   "description": "Turn notes into active-recall flashcards with spaced repetition scheduling.",
   "author": "obsidian flashcard team",

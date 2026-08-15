@@ -511,6 +511,18 @@
   .memory-cards-modal .mc-reveal {
     width: auto;
   }
+
+  /* QuickAdd: the modal's own safe-area padding resolves to 0px on desktop,
+     which zeroes Obsidian's default modal padding. Give the form explicit
+     left/right padding so labels, inputs and buttons never touch the edges. */
+  .memory-cards-modal--quickadd .modal-content {
+    padding-left: var(--mc-gap);
+    padding-right: var(--mc-gap);
+  }
+
+  .memory-cards-modal--quickadd .modal-content h2 {
+    padding-top: 8px;
+  }
 }
 
 /* ─── Landscape phones ─── */

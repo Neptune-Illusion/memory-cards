@@ -59,6 +59,7 @@ export class Store {
       reviewedDays: Array.isArray(raw.reviewedDays) ? raw.reviewedDays : [],
       newCardsIntroduced: raw.newCardsIntroduced ?? {},
       activeSession: raw.activeSession,
+      aiConfig: raw.aiConfig,
     };
   }
 
@@ -164,7 +165,12 @@ export class Store {
 
   normalizeAIConfig(): void {
     if (this.data.aiConfig) {
+      const before = JSON.stringify(this.data.aiConfig);
       this.data.aiConfig = normalizeAIConfig(this.data.aiConfig);
+      // Persist when migration actually changed values (e.g. removed gemini provider)
+      if (JSON.stringify(this.data.aiConfig) !== before) {
+        this.scheduleSave();
+      }
     }
   }
 

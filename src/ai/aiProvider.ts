@@ -1,6 +1,6 @@
 /** AI provider abstraction — multi-provider support. */
 
-export type ProviderType = 'anthropic' | 'openai' | 'gemini';
+export type ProviderType = 'anthropic' | 'openai';
 
 export interface AIProviderConfig {
   provider: ProviderType;
@@ -21,5 +21,4 @@ export interface AIProvider {
 export const PROVIDER_DEFAULTS: Record<ProviderType, { baseUrl: string; model: string }> = {
   anthropic: { baseUrl: 'https://api.anthropic.com/v1/messages', model: 'claude-sonnet-4-20250514' },
   openai: { baseUrl: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o' },
-  gemini: { baseUrl: 'https://generativelanguage.googleapis.com/v1beta/', model: 'gemini-2.0-flash' },
 };

@@ -3,7 +3,6 @@ import { buildChunkPrompt, parseGeneratedCards, splitIntoChunks } from '../src/c
 import { deduplicateCards, applyMaxCards } from '../src/cardGeneration/cardDeduplicator';
 import { AnthropicProvider } from '../src/ai/anthropicProvider';
 import { OpenAIProvider } from '../src/ai/openaiProvider';
-import { GeminiProvider } from '../src/ai/geminiProvider';
 import { createProvider } from '../src/ai/providerFactory';
 import type { Card } from '../src/types';
 import type { MemoryCardsSettings } from '../src/types';
@@ -312,49 +311,6 @@ describe('OpenAIProvider', () => {
   });
 });
 
-describe('GeminiProvider', () => {
-  it('validate returns false when no apiKey', async () => {
-    const p = new GeminiProvider({ provider: 'gemini', apiKey: '', model: 'test' });
-    expect(await p.validate()).toBe(false);
-  });
-
-  it('generate sends key in URL and parses response', async () => {
-    const apiResponse = JSON.stringify({ candidates: [{ content: { parts: [{ text: '{"cards":[]}' }] } }] });
-    const mockFetch = vi.fn().mockResolvedValue({ ok: true, text: async () => apiResponse });
-    vi.stubGlobal('fetch', mockFetch);
-    try {
-      const p = new GeminiProvider({ provider: 'gemini', apiKey: 'ai-test-key', model: 'gemini-2.0-flash' });
-      const result = await p.generate('hello');
-      expect(result).toBe('{"cards":[]}');
-      const url = mockFetch.mock.calls[0][0];
-      expect(url).toContain('key=ai-test-key');
-    } finally {
-      vi.restoreAllMocks();
-    }
-  });
-
-  it('generate error message does not leak API key', async () => {
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 400,
-      text: async () => 'Invalid key in request URL: https://api?key=super-secret-key-12345',
-    });
-    vi.stubGlobal('fetch', mockFetch);
-    try {
-      const p = new GeminiProvider({ provider: 'gemini', apiKey: 'super-secret-key-12345', model: 'm' });
-      try {
-        await p.generate('hello');
-        expect.fail('should have thrown');
-      } catch (err: any) {
-        expect(err.message).not.toContain('super-secret-key-12345');
-        expect(err.message).toContain('key=***');
-      }
-    } finally {
-      vi.restoreAllMocks();
-    }
-  });
-});
-
 describe('providerFactory migration — legacy "claude" provider', () => {
   it('maps provider "claude" to AnthropicProvider', () => {
     const p = createProvider({ provider: 'claude' as any, apiKey: 'sk-test', model: 'test' });
@@ -371,9 +327,30 @@ describe('providerFactory migration — legacy "claude" provider', () => {
     expect(p).toBeInstanceOf(OpenAIProvider);
   });
 
-  it('maps provider "gemini" to GeminiProvider', () => {
-    const p = createProvider({ provider: 'gemini', apiKey: 'ai-test', model: 'test' });
-    expect(p).toBeInstanceOf(GeminiProvider);
+    it('maps removed provider "gemini" to AnthropicProvider (migration)', () => {
+    const p = createProvider({ provider: 'gemini' as any, apiKey: 'x', model: 'test' });
+    expect(p).toBeInstanceOf(AnthropicProvider);
+  });
+});
+
+describe('normalizeAIConfig — gemini removal migration', () => {
+  it('migrates removed provider gemini → anthropic with anthropic defaults', async () => {
+    const { normalizeAIConfig } = await import('../src/ui/aiConfigPanel');
+    const old = { provider: 'gemini' as any, apiKey: 'x', model: 'gemini-2.0-flash', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/' };
+    const result = normalizeAIConfig(old);
+    expect(result.provider).toBe('anthropic');
+    // Gemini model/baseUrl are unusable — must reset to anthropic defaults
+    expect(result.model).not.toContain('gemini');
+    expect(result.baseUrl).not.toContain('generativelanguage');
+    expect(result.baseUrl).toContain('anthropic');
+  });
+
+  it('keeps custom claude endpoint when migrating claude → anthropic', async () => {
+    const { normalizeAIConfig } = await import('../src/ui/aiConfigPanel');
+    const old = { provider: 'claude' as any, apiKey: 'x', model: 'claude-3-custom', endpoint: 'https://proxy.example.com/v1/messages' };
+    const result = normalizeAIConfig(old);
+    expect(result.provider).toBe('anthropic');
+    expect(result.baseUrl).toBe('https://proxy.example.com/v1/messages');
   });
 });
 

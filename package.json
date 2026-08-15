@@ -1,6 +1,6 @@
 {
   "name": "memory-cards",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Active-recall flashcards with spaced repetition for Obsidian",
   "main": "main.js",
   "private": true,

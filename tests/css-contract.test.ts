@@ -212,6 +212,29 @@ describe('CSS contract — DOM structure for QuickAdd label clipping', () => {
   });
 });
 
+describe('CSS contract — QuickAdd desktop padding', () => {
+  it('desktop breakpoint gives QuickAdd modal-content explicit left/right padding', () => {
+    const desktopBlock = css.slice(
+      css.indexOf('@media (min-width: 1024px)'),
+      css.indexOf('@media (max-height: 500px)')
+    );
+    const paddingBlock = desktopBlock.slice(
+      desktopBlock.indexOf('.memory-cards-modal--quickadd .modal-content {'),
+      desktopBlock.indexOf('}', desktopBlock.indexOf('.memory-cards-modal--quickadd .modal-content {'))
+    );
+    expect(paddingBlock).toContain('padding-left: var(--mc-gap)');
+    expect(paddingBlock).toContain('padding-right: var(--mc-gap)');
+  });
+
+  it('QuickAdd modal adds a dedicated class for scoped styling', () => {
+    const src = require('fs').readFileSync(
+      require('path').resolve(__dirname, '../src/ui/quickAddModal.ts'),
+      'utf-8'
+    );
+    expect(src).toContain("memory-cards-modal--quickadd");
+  });
+});
+
 describe('CSS contract — SettingsTab AIConfig integration', () => {
   it('settingsTab imports AIConfigPanel', () => {
     const src = require('fs').readFileSync(
@@ -231,7 +254,10 @@ describe('CSS contract — SettingsTab AIConfig integration', () => {
     );
     expect(src).toContain('anthropic');
     expect(src).toContain('openai');
-    expect(src).toContain('gemini');
+    // Provider labels must NOT contain the removed Gemini option
+    expect(src).not.toContain('Google Gemini');
+    // PROVIDER_LABELS map must not include a gemini key
+    expect(src).not.toMatch(/gemini:\s*'/);
     expect(src).toContain('Provider');
     expect(src).toContain('addDropdown');
   });

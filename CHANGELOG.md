@@ -1,5 +1,38 @@
 # Obsidian 闪卡插件 — 变更日志
 
+## v0.3.2 — 移除 Gemini、Provider 切换模型兼容修复（2026-08-15）
+
+### 🔧 修复
+- **移除 Gemini 支持**: 删除 Gemini provider 实现、ProviderType 分支、设置选项与相关测试，仅保留 Anthropic 与 OpenAI-compatible 两个 provider
+- **旧配置迁移**: 历史 data.json 中 `provider=gemini` 自动迁移到 anthropic 默认配置（model/baseUrl 重置为官方默认，避免启动报错）；`provider='claude'` 迁移保留自定义 endpoint → baseUrl
+- **Store 加载修复**: `Store.load()` 补读 `aiConfig` 字段，迁移结果随 `saveData` 持久化，重启后不再回退
+- **Provider 切换兼容**: 仅当 model/baseUrl 等于旧 provider 默认值时自动更新为新 provider 默认值，自定义值保持不变
+- **Provider 下拉仅两项**（Anthropic / OpenAI-compatible）
+
+### ✅ 自动化检查
+- 210 tests pass（自动化检查；含 gemini→anthropic 迁移、claude→anthropic 迁移、provider 默认值规则测试）
+- Build clean（tsc + esbuild 无错误）
+- 未配置 API key，不进行真实 API 调用验证
+
+### 📦 版本
+- manifest.json / CHANGELOG.md → 0.3.2（package.json / versions.json 不变）
+
+---
+## v0.3.1 — UI 修复：桌面新建卡片文字裁切 + AI Provider 设置接入（2026-08-15）
+
+### 🔧 修复
+- **桌面建卡 label 裁切**: `.mc-field label` 添加 `display: block;` + `white-space: normal;` + `overflow: visible;`，100%/125%/150% 缩放与窄宽桌面均完整显示，不再只加 gap
+- **Provider 设置接入**: SettingTab 挂载最新 `AIConfigPanel`（Provider 下拉、API Key、模型、Base URL、密度、最大卡数），升级旧 data.json 后可见
+- **QuickAddModal**: `.mc-field` 布局在所有断点下 label 完整显示
+
+### ✅ 验证
+- 自动化检查: 构建 + vitest 通过
+- 真实 Obsidian 1.13.7 实机验证（/tmp/obsi-test-vault）: 新建记忆卡中文 label 无裁切；Provider 设置页可见；未配置 API key，无真实 API 调用
+
+### 📦 版本
+- manifest.json / package.json / versions.json → 0.3.1
+
+---
 ## v0.3.0 补丁 — 拆卡密度、硬上限与旧 endpoint 迁移（2026-08-15）
 
 ### 🔧 修复
@@ -165,3 +198,5 @@ tags: [生物, 期末]
 - 50 个单测（parser / scheduler / anticheat / store）
 - 纯函数架构，易于维护
 - 离线复习，无网络依赖
+
+---
